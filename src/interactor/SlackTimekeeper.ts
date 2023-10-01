@@ -2,18 +2,18 @@ import WorkDay from "../entity/WorkDay";
 import {getMinutesDifference} from "../util/TimeUtil";
 
 
-export interface SlackNotifier {
-
-    notifyAll(message: string): void;
-
-}
-
 export interface SlackDataAccess {
 
     updateWorkDay(workDay: WorkDay): void;
 
     getWorkDayByEmployee(employeeId: string): WorkDay;
 
+}
+
+interface SlackTimekeeperOutput {
+    date: Date;
+    workDay: WorkDay;
+    message: string | null;
 }
 
 interface SlackTimekeeperRequest {
@@ -28,42 +28,38 @@ interface SlackTimekeeperResource {
 
 export default class SlackTimekeeper {
 
-    private notifier: SlackNotifier
     private dataAccess: SlackDataAccess
 
-    constructor(notifier: SlackNotifier, dataAccess: SlackDataAccess) {
-        this.notifier = notifier;
+    constructor(dataAccess: SlackDataAccess) {
         this.dataAccess = dataAccess;
     }
 
-    public shiftEnd(request: SlackTimekeeperRequest) {
+    public shiftEnd(request: SlackTimekeeperRequest): SlackTimekeeperOutput {
         const workDay = this.dataAccess.getWorkDayByEmployee(request.employeeId);
-        this.dataAccess.updateWorkDay({
-            ...workDay,
-            shift: {
-                ...workDay.shift,
-                end: request.date
-            },
+        const message = this.getShiftEndMessage({
+            workDay: workDay,
+            date: request.date
         });
-        const resource: SlackTimekeeperResource = {
-            date: request.date,
-            workDay: workDay
-        }
-        this.handleShiftEndNotifications(resource);
+        workDay.shift.end = request.date;
+        this.dataAccess.updateWorkDay(workDay);
+        return {
+            date: new Date(),
+            workDay: workDay,
+            message: message
+        };
     }
 
-    private handleShiftEndNotifications(resource: SlackTimekeeperResource) {
-        const {workDay} = resource;
-        const {employee} = workDay;
+    private getShiftEndMessage(resource: SlackTimekeeperResource): string | null {
         if (!this.hasShiftStarted(resource)) {
-            this.notifier.notifyAll(`<@${employee.id}>! shift has ended before start`);
+            return "Shift has ended before start";
         } else if (this.hasShiftAlreadyEnded(resource)) {
-            this.notifier.notifyAll(`<@${employee.id}>! repeated shift end`);
+            return "Repeated shift end";
         } else if (this.isShiftEndingBeforeExpectation(resource)) {
-            this.notifier.notifyAll(`<@${employee.id}>! shift is ending earlier than expected`);
+            return "Shift is ending earlier than expected";
         } else if (this.isShiftEndingAfterExpectation(resource)) {
-            this.notifier.notifyAll(`<@${employee.id}>! shift is ending later than expected`);
+            return "Shift is ending later than expected";
         }
+        return null;
     }
 
     private hasShiftStarted(resource: SlackTimekeeperResource) {
@@ -79,7 +75,7 @@ export default class SlackTimekeeper {
         const workDay = resource.workDay;
         const idealEnd = workDay.employee.shift.end;
         const minutesDiff = getMinutesDifference(realEnd, idealEnd);
-        return minutesDiff < 2;
+        return minutesDiff < -2;
     }
 
     private isShiftEndingAfterExpectation(resource: SlackTimekeeperResource) {
@@ -89,4 +85,5 @@ export default class SlackTimekeeper {
         const minutesDiff = getMinutesDifference(realEnd, idealEnd);
         return minutesDiff > 15;
     }
+
 }

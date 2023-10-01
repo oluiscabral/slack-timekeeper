@@ -1,9 +1,9 @@
-import SlackTimekeeper, {SlackDataAccess, SlackNotifier} from "../../src/interactor/SlackTimekeeper";
+import SlackTimekeeper, {SlackDataAccess} from "../../src/interactor/SlackTimekeeper";
 import WorkDay from "../../src/entity/WorkDay";
 import Employee from "../../src/entity/Employee";
 
 
-const mockEmployee: Employee = {
+const testEmployee: Employee = {
     isManager: false,
     id: 'employee123',
     shift: {
@@ -22,7 +22,7 @@ const mockEmployee: Employee = {
     ],
 };
 
-const mockManager: Employee = {
+const testManager: Employee = {
     isManager: true,
     id: 'manager321',
     shift: {
@@ -37,11 +37,6 @@ const mockManager: Employee = {
     ],
 };
 
-class MockNotifier implements SlackNotifier {
-    notifyAll(message: string) {
-    }
-}
-
 class MockDataAccess implements SlackDataAccess {
     private readonly workDayShift: Timespan;
     private readonly workDayBreaks: Array<Timespan>;
@@ -55,17 +50,17 @@ class MockDataAccess implements SlackDataAccess {
     }
 
     public getWorkDayByEmployee(employeeId: string): WorkDay {
-        if (employeeId === mockEmployee.id) {
+        if (employeeId === testEmployee.id) {
             return {
                 date: new Date(),
-                employee: mockEmployee,
+                employee: testEmployee,
                 shift: this.workDayShift,
                 breaks: this.workDayBreaks,
             };
-        } else if (employeeId === mockManager.id) {
+        } else if (employeeId === testManager.id) {
             return {
                 date: new Date(),
-                employee: mockManager,
+                employee: testManager,
                 shift: this.workDayShift,
                 breaks: this.workDayBreaks,
             };
@@ -80,20 +75,20 @@ describe('SlackTimekeeper', () => {
             end: null,
             start: new Date('2023-09-30T08:00:00'),
         };
-        const notifier = new MockNotifier();
         const dataAccess = new MockDataAccess(workDayShift, []);
-        const timekeeper = new SlackTimekeeper(notifier, dataAccess);
-
-        const notifyAllSpy = jest.spyOn(notifier, 'notifyAll');
-
-        timekeeper.shiftEnd({
+        const timekeeper = new SlackTimekeeper(dataAccess);
+        const updateWorkDaySpy = jest.spyOn(dataAccess, 'updateWorkDay');
+        const getWorkDayByEmployee = jest.spyOn(dataAccess, 'getWorkDayByEmployee');
+        const output = timekeeper.shiftEnd({
             employeeId: "employee123",
-            date: new Date('2023-09-30T08:00:00')
+            date: new Date('2023-09-30T16:00:00')
         });
-
-        expect(notifyAllSpy).toHaveBeenCalledWith(
-            `<@employee123>! shift has ended before start.`
-        );
+        expect(output.message).toBeNull();
+        expect(updateWorkDaySpy).toHaveBeenCalled();
+        expect(output.workDay.employee).toEqual(testEmployee);
+        expect(getWorkDayByEmployee).toHaveBeenCalledWith("employee123");
+        expect(output.workDay.shift.end).toEqual(new Date('2023-09-30T16:00:00'));
+        expect(output.workDay.shift.start).toEqual(new Date('2023-09-30T08:00:00'));
     });
 
 });
