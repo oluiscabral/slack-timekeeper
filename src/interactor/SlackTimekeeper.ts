@@ -41,6 +41,7 @@ export default class SlackTimekeeper {
             date: request.date
         });
         workDay.shift.end = request.date;
+        workDay.shift.start = workDay.shift.start ?? request.date;
         this.dataAccess.updateWorkDay(workDay);
         return {
             date: new Date(),
@@ -75,7 +76,7 @@ export default class SlackTimekeeper {
         const workDay = resource.workDay;
         const idealEnd = workDay.employee.shift.end;
         const minutesDiff = getMinutesDifference(realEnd, idealEnd);
-        return minutesDiff < -2;
+        return minutesDiff > 2;
     }
 
     private isShiftEndingAfterExpectation(resource: SlackTimekeeperResource) {
@@ -83,7 +84,7 @@ export default class SlackTimekeeper {
         const workDay = resource.workDay;
         const idealEnd = workDay.employee.shift.end;
         const minutesDiff = getMinutesDifference(realEnd, idealEnd);
-        return minutesDiff > 15;
+        return minutesDiff < -15;
     }
 
 }
