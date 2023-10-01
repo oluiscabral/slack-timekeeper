@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "rootDir": "./src",
+    "target": "es2016",
+    "module": "commonjs",
+    "skipLibCheck": true,
+    "noImplicitAny": true,
+    "outFile": "./main.js",
+    "removeComments": true,
+    "esModuleInterop": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}
