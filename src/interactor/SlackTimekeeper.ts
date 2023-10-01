@@ -40,7 +40,7 @@ export default class SlackTimekeeper {
 
     public shiftEnd(request: SlackTimekeeperRequest): SlackTimekeeperOutput {
         const workDay = this.dataAccess.getWorkDayByEmployee(request.employeeId);
-        this.validate(workDay);
+        this.validateShiftEnd(workDay);
         workDay.shift.end = request.date;
         this.dataAccess.updateWorkDay(workDay);
         return {
@@ -49,7 +49,7 @@ export default class SlackTimekeeper {
         };
     }
 
-    private validate(workDay: WorkDay) {
+    private validateShiftEnd(workDay: WorkDay) {
         if (this.hasNotShiftStarted(workDay)) {
             throw new SlackTimekeeperError("Shift has not started yet!");
         }
@@ -66,4 +66,28 @@ export default class SlackTimekeeper {
         return workDay.shift.end !== null;
     }
 
+    public breakEnd(request: SlackTimekeeperRequest) {
+        const workDay = this.dataAccess.getWorkDayByEmployee(request.employeeId);
+        const subject = workDay.breaks.pop()
+        this.validateBreakEnd(subject);
+        // @ts-ignore
+        subject.end = request.date;
+        // @ts-ignore
+        workDay.breaks.push(subject);
+        this.dataAccess.updateWorkDay(workDay);
+        return {
+            date: new Date(),
+            workDay: workDay
+        };
+    }
+
+    private isBreakOpen(subject: Timespan) {
+        return subject.start !== null && subject.end === null;
+    }
+
+    private validateBreakEnd(subject: Timespan | undefined) {
+        if (subject === undefined || subject.end !== null) {
+            throw new SlackTimekeeperError("There is no open and started break!");
+        }
+    }
 }

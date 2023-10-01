@@ -69,7 +69,7 @@ class MockDataAccess implements SlackDataAccess {
     }
 }
 
-describe('SlackTimekeeper', () => {
+describe('SlackTimekeeper.shiftEnd', () => {
     it('should handle correct shift end', () => {
         const workDayShift = {
             end: null,
@@ -97,12 +97,12 @@ describe('SlackTimekeeper', () => {
         };
         const dataAccess = new MockDataAccess(workDayShift, []);
         const timekeeper = new SlackTimekeeper(dataAccess);
-        const updateWorkDaySpy = jest.spyOn(dataAccess, 'updateWorkDay');
         const getWorkDayByEmployee = jest.spyOn(dataAccess, 'getWorkDayByEmployee');
         expect(() => timekeeper.shiftEnd({
             employeeId: "employee123",
             date: new Date('2023-09-30T16:00:00')
         })).toThrowError(SlackTimekeeperError);
+        expect(getWorkDayByEmployee).toHaveBeenCalledWith("employee123");
     });
 
     it('should handle repeated shift end', () => {
@@ -112,12 +112,80 @@ describe('SlackTimekeeper', () => {
         };
         const dataAccess = new MockDataAccess(workDayShift, []);
         const timekeeper = new SlackTimekeeper(dataAccess);
-        const updateWorkDaySpy = jest.spyOn(dataAccess, 'updateWorkDay');
         const getWorkDayByEmployee = jest.spyOn(dataAccess, 'getWorkDayByEmployee');
         expect(() => timekeeper.shiftEnd({
             employeeId: "employee123",
             date: new Date('2023-09-30T16:00:00')
         })).toThrowError(SlackTimekeeperError);
+        expect(getWorkDayByEmployee).toHaveBeenCalledWith("employee123");
+    });
+
+});
+
+describe('SlackTimekeeper.breakEnd', () => {
+    it('should handle correct break end', () => {
+        const workDayShift = {
+            end: null,
+            start: new Date('2023-09-30T08:00:00'),
+        };
+        const workDayBreaks = [
+            {
+                end: null,
+                start: new Date('2023-09-30T10:00:00'),
+            }
+        ];
+        const dataAccess = new MockDataAccess(workDayShift, workDayBreaks);
+        const timekeeper = new SlackTimekeeper(dataAccess);
+        const updateWorkDaySpy = jest.spyOn(dataAccess, 'updateWorkDay');
+        const getWorkDayByEmployee = jest.spyOn(dataAccess, 'getWorkDayByEmployee');
+        const output = timekeeper.breakEnd({
+            employeeId: "employee123",
+            date: new Date('2023-09-30T10:15:00')
+        });
+        const subject = output.workDay.breaks.pop()
+        expect(updateWorkDaySpy).toHaveBeenCalled();
+        expect(output.workDay.employee).toEqual(testEmployee);
+        expect(getWorkDayByEmployee).toHaveBeenCalledWith("employee123");
+        // @ts-ignore
+        expect(subject.end).toEqual(new Date('2023-09-30T10:15:00'));
+        // @ts-ignore
+        expect(subject.start).toEqual(new Date('2023-09-30T10:00:00'));
+    });
+
+    it('should handle closed or non started breaks end 01', () => {
+        const workDayShift = {
+            end: null,
+            start: new Date('2023-09-30T08:00:00'),
+        };
+        const dataAccess = new MockDataAccess(workDayShift, []);
+        const timekeeper = new SlackTimekeeper(dataAccess);
+        const getWorkDayByEmployee = jest.spyOn(dataAccess, 'getWorkDayByEmployee');
+        expect(() => timekeeper.breakEnd({
+            employeeId: "employee123",
+            date: new Date('2023-09-30T16:00:00')
+        })).toThrowError(SlackTimekeeperError);
+        expect(getWorkDayByEmployee).toHaveBeenCalledWith("employee123");
+    });
+
+    it('should handle closed or non started breaks end 02', () => {
+        const workDayShift = {
+            end: null,
+            start: new Date('2023-09-30T08:00:00'),
+        };
+        const workDayBreaks = [
+            {
+                end: new Date('2023-09-30T10:15:00'),
+                start: new Date('2023-09-30T10:00:00'),
+            }
+        ];
+        const dataAccess = new MockDataAccess(workDayShift, workDayBreaks);
+        const timekeeper = new SlackTimekeeper(dataAccess);
+        const getWorkDayByEmployee = jest.spyOn(dataAccess, 'getWorkDayByEmployee');
+        expect(() => timekeeper.breakEnd({
+            employeeId: "employee123",
+            date: new Date('2023-09-30T16:00:00')
+        })).toThrowError(SlackTimekeeperError);
+        expect(getWorkDayByEmployee).toHaveBeenCalledWith("employee123");
     });
 
 });
