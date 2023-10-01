@@ -1,5 +1,4 @@
 import WorkDay from "../entity/WorkDay";
-import {getMinutesDifference} from "../util/TimeUtil";
 
 
 export interface SlackDataAccess {
@@ -13,7 +12,6 @@ export interface SlackDataAccess {
 interface SlackTimekeeperOutput {
     date: Date;
     workDay: WorkDay;
-    message: string | null;
 }
 
 interface SlackTimekeeperRequest {
@@ -21,9 +19,15 @@ interface SlackTimekeeperRequest {
     employeeId: string;
 }
 
-interface SlackTimekeeperResource {
-    date: Date;
-    workDay: WorkDay;
+export class SlackTimekeeperError implements Error {
+    name: string;
+    message: string;
+
+    constructor(message: string) {
+        this.message = message;
+        this.name = "SlackTimekeeperError";
+    }
+
 }
 
 export default class SlackTimekeeper {
@@ -36,55 +40,30 @@ export default class SlackTimekeeper {
 
     public shiftEnd(request: SlackTimekeeperRequest): SlackTimekeeperOutput {
         const workDay = this.dataAccess.getWorkDayByEmployee(request.employeeId);
-        const message = this.getShiftEndMessage({
-            workDay: workDay,
-            date: request.date
-        });
+        this.validate(workDay);
         workDay.shift.end = request.date;
-        workDay.shift.start = workDay.shift.start ?? request.date;
         this.dataAccess.updateWorkDay(workDay);
         return {
             date: new Date(),
-            workDay: workDay,
-            message: message
+            workDay: workDay
         };
     }
 
-    private getShiftEndMessage(resource: SlackTimekeeperResource): string | null {
-        if (!this.hasShiftStarted(resource)) {
-            return "Shift has ended before start";
-        } else if (this.hasShiftAlreadyEnded(resource)) {
-            return "Repeated shift end";
-        } else if (this.isShiftEndingBeforeExpectation(resource)) {
-            return "Shift is ending earlier than expected";
-        } else if (this.isShiftEndingAfterExpectation(resource)) {
-            return "Shift is ending later than expected";
+    private validate(workDay: WorkDay) {
+        if (this.hasNotShiftStarted(workDay)) {
+            throw new SlackTimekeeperError("Shift has not started yet!");
         }
-        return null;
+        if (this.hasShiftAlreadyEnded(workDay)) {
+            throw new SlackTimekeeperError("Shift has already been ended!");
+        }
     }
 
-    private hasShiftStarted(resource: SlackTimekeeperResource) {
-        return resource.workDay.shift.start !== null;
+    private hasNotShiftStarted(workDay: WorkDay) {
+        return workDay.shift.start === null;
     }
 
-    private hasShiftAlreadyEnded(resource: SlackTimekeeperResource) {
-        return resource.workDay.shift.end !== null;
-    }
-
-    private isShiftEndingBeforeExpectation(resource: SlackTimekeeperResource) {
-        const realEnd = resource.date;
-        const workDay = resource.workDay;
-        const idealEnd = workDay.employee.shift.end;
-        const minutesDiff = getMinutesDifference(realEnd, idealEnd);
-        return minutesDiff > 2;
-    }
-
-    private isShiftEndingAfterExpectation(resource: SlackTimekeeperResource) {
-        const realEnd = resource.date;
-        const workDay = resource.workDay;
-        const idealEnd = workDay.employee.shift.end;
-        const minutesDiff = getMinutesDifference(realEnd, idealEnd);
-        return minutesDiff < -15;
+    private hasShiftAlreadyEnded(workDay: WorkDay) {
+        return workDay.shift.end !== null;
     }
 
 }
