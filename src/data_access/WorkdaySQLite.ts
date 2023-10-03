@@ -5,6 +5,7 @@ import ShiftDataAccess from "../interactor/ShiftDataAccess";
 import Workday from "../entity/Workday";
 import WorkdayDataAccess from "../interactor/WorkdayDataAccess";
 import Break from "../entity/Break";
+import {getTodayDate} from "../util/TimeUtil";
 
 interface WorkdayRow {
     id: number;
@@ -152,9 +153,9 @@ export default class WorkdaySQLite implements WorkdayDataAccess {
     }
 
     getEmployeeWorkday(employeeId: string): Promise<Workday> {
-        const sql = `SELECT * FROM workday WHERE employee_id = ?`;
+        const sql = `SELECT * FROM workday WHERE employee_id = ? AND date = ?`;
         return new Promise((resolve, reject) => {
-            this.db.get(sql, [employeeId], async (err, row: WorkdayRow) => {
+            this.db.get(sql, [employeeId, getTodayDate()], async (err, row: WorkdayRow) => {
                 if (err) {
                     reject(err);
                 }

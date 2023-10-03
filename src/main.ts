@@ -22,6 +22,7 @@ const employeeDataAccess = new EmployeeSQLite(databasePath, shiftDataAccess, bre
 const workdayDataAccess = new WorkdaySQLite(databasePath, shiftDataAccess, breakDataAccess, employeeDataAccess);
 const timekeeper = new Timekeeper(workdayDataAccess, employeeDataAccess, breakDataAccess);
 
+console.log("Creating command listeners...");
 app.command('/hi', async ({command, ack}) => {
     await ack();
     console.log(command);

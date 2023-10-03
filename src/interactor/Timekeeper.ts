@@ -41,6 +41,8 @@ export default class Timekeeper {
     }
 
     public async shiftStart(request: TimekeeperRequest): Promise<TimekeeperOutput> {
+        console.log(`Shift start requested: ${request}`);
+        await this.validateShiftStart(request);
         const employee = await this.employeeDataAccess.getEmployeeById(request.employeeId);
         const shift: Shift = {
             id: undefined,
@@ -61,7 +63,16 @@ export default class Timekeeper {
         }
     }
 
+    public async validateShiftStart(request: TimekeeperRequest) {
+        try {
+            return await this.workdayDataAccess.getEmployeeWorkday(request.employeeId);
+        } catch (error) {
+            throw new TimekeeperError("Shift has already been started");
+        }
+    }
+
     public async shiftEnd(request: TimekeeperRequest): Promise<TimekeeperOutput> {
+        console.log(`Shift end requested: ${request}`);
         const workday = await this.getWorkday(request);
         this.validateShiftEnd(workday);
         workday.shift.end = request.date;
@@ -98,6 +109,7 @@ export default class Timekeeper {
     }
 
     public async breakStart(request: TimekeeperRequest): Promise<TimekeeperOutput> {
+        console.log(`Break start requested: ${request}`);
         const workday = await this.workdayDataAccess.getEmployeeWorkday(request.employeeId);
         this.validateBreakStart(workday);
         const subject = await this.createBreak(request);
@@ -126,6 +138,7 @@ export default class Timekeeper {
     }
 
     public async breakEnd(request: TimekeeperRequest): Promise<TimekeeperOutput> {
+        console.log(`Break end requested: ${request}`);
         const workday = await this.workdayDataAccess.getEmployeeWorkday(request.employeeId);
         const subject = workday.breaks.pop()
         this.validateBreakEnd(subject);
