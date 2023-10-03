@@ -1,15 +1,17 @@
 import Workday from "../../src/entity/Workday";
 import Employee from "../../src/entity/Employee";
-import Timekeeper, {TimekeeperError, TimekeeperOutput, TimekeeperRequest} from "../../src/interactor/Timekeeper";
 import WorkdaySQLite from "../../src/data_access/WorkdaySQLite";
+import EmployeeSQLite from "../../src/data_access/EmployeeSQLite";
 import ShiftDataAccess from "../../src/interactor/ShiftDataAccess";
 import BreakDataAccess from "../../src/interactor/BreakDataAccess";
-import EmployeeDataAccess from "../../src/interactor/EmployeeDataAccess";
+import Timekeeper, {TimekeeperError, TimekeeperOutput, TimekeeperRequest} from "../../src/interactor/Timekeeper";
+import {getTodayDate} from "../../src/util/TimeUtil";
 
 jest.mock("../../src/data_access/WorkdaySQLite");
+jest.mock("../../src/data_access/EmployeeSQLite");
 
 describe('Timekeeper', () => {
-    const mockEmployee: Employee = {
+    const employee: Employee = {
         id: '12345',
         isManager: false,
         shift: {
@@ -30,27 +32,68 @@ describe('Timekeeper', () => {
             }
         ]
     };
+
     let timekeeper: Timekeeper;
     let workdayDataAccess: jest.Mocked<WorkdaySQLite>;
+    let employeeDataAccess: jest.Mocked<EmployeeSQLite>;
 
     beforeEach(() => {
+        const shiftDataAccess = {} as ShiftDataAccess;
+        const breakDataAccess = {} as BreakDataAccess;
+        employeeDataAccess = new EmployeeSQLite(
+            'test-db-path',
+            shiftDataAccess,
+            breakDataAccess,
+        ) as jest.Mocked<EmployeeSQLite>;
         workdayDataAccess = new WorkdaySQLite(
             'test-db-path',
-            {} as ShiftDataAccess,
-            {} as BreakDataAccess,
-            {} as EmployeeDataAccess
+            shiftDataAccess,
+            breakDataAccess,
+            employeeDataAccess,
         ) as jest.Mocked<WorkdaySQLite>;
-        timekeeper = new Timekeeper(workdayDataAccess);
+        timekeeper = new Timekeeper(workdayDataAccess, employeeDataAccess);
+    });
+
+    describe('shiftStart', () => {
+        it('should start a shift for an employee and return workday data', async () => {
+            const workday: Workday = {
+                id: 1,
+                date: getTodayDate(),
+                employee: employee,
+                shift: {
+                    id: 1,
+                    end: undefined,
+                    start: new Date('2023-10-01T08:00:00Z'),
+                },
+                breaks: []
+            };
+            workdayDataAccess.createWorkday.mockResolvedValue(workday);
+            employeeDataAccess.getEmployeeById.mockResolvedValue(employee);
+
+            const request: TimekeeperRequest = {
+                date: new Date(),
+                employeeId: employee.id,
+            };
+
+            const result: TimekeeperOutput = await timekeeper.shiftStart(request);
+            expect(workdayDataAccess.createWorkday).toHaveBeenCalled();
+            expect(employeeDataAccess.getEmployeeById).toHaveBeenCalledWith(request.employeeId);
+            expect(result).toEqual({
+
+                date: expect.any(Date),
+                workday: workday,
+            });
+        });
     });
 
     describe('shiftEnd', () => {
         test('should end shift successfully', async () => {
-            const request: TimekeeperRequest = {date: new Date(), employeeId: '1'};
+            const request: TimekeeperRequest = {date: new Date(), employeeId: employee.id};
             const workday: Workday = {
                 id: 1,
                 breaks: [],
-                date: new Date(),
-                employee: mockEmployee,
+                employee: employee,
+                date: getTodayDate(),
                 shift: {id: 1, start: new Date(), end: undefined}
             };
             workdayDataAccess.getEmployeeWorkday.mockResolvedValue(workday);
@@ -66,7 +109,7 @@ describe('Timekeeper', () => {
                 id: 1,
                 breaks: [],
                 date: new Date(),
-                employee: mockEmployee,
+                employee: employee,
                 shift: {id: 1, start: new Date(), end: new Date()}
             };
             workdayDataAccess.getEmployeeWorkday.mockResolvedValue(workday);
@@ -75,12 +118,12 @@ describe('Timekeeper', () => {
         });
 
         test('should throw shift has not started', async () => {
-            const request: TimekeeperRequest = {date: new Date(), employeeId: '1'};
+            const request: TimekeeperRequest = {date: new Date(), employeeId: employee.id};
             const workday: Workday = {
                 id: 1,
                 breaks: [],
-                date: new Date(),
-                employee: mockEmployee,
+                employee: employee,
+                date: getTodayDate(),
                 shift: {id: 1, start: undefined, end: undefined}
             };
             workdayDataAccess.getEmployeeWorkday.mockResolvedValue(workday);
@@ -91,11 +134,11 @@ describe('Timekeeper', () => {
 
     describe('breakEnd', () => {
         test('should end break successfully', async () => {
-            const request: TimekeeperRequest = {date: new Date(), employeeId: '1'};
+            const request: TimekeeperRequest = {date: new Date(), employeeId: employee.id};
             const workday: Workday = {
                 id: 1,
-                date: new Date(),
-                employee: mockEmployee,
+                employee: employee,
+                date: getTodayDate(),
                 shift: {id: 1, start: new Date(), end: undefined},
                 breaks: [{id: 1, start: new Date(), end: undefined}]
             };
@@ -107,11 +150,11 @@ describe('Timekeeper', () => {
         });
 
         test('should throw error if no break has started', async () => {
-            const request: TimekeeperRequest = {date: new Date(), employeeId: '1'};
+            const request: TimekeeperRequest = {date: new Date(), employeeId: employee.id};
             const workday: Workday = {
                 id: 1,
-                date: new Date(),
-                employee: mockEmployee,
+                employee: employee,
+                date: getTodayDate(),
                 shift: {id: 1, start: new Date(), end: undefined},
                 breaks: [{id: 1, start: new Date(), end: new Date()}] // No open break (it's already ended)
             };

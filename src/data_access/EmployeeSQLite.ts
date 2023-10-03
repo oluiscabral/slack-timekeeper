@@ -25,13 +25,15 @@ export default class EmployeeSQLite implements EmployeeDataAccess {
         employee.shift = await this.shiftDataAccess.createShift(employee.shift);
         employee.breaks = await Promise.all(employee.breaks.map(async subject => {
             return this.breakDataAccess.createBreak(subject);
-        }))
-        return this.insertEmployee(employee);
+        }));
+        const insertedEmployee = await this.insertEmployee(employee);
+        await this.linkEmployeeBreaks(insertedEmployee);
+        return insertedEmployee;
     }
 
     private insertEmployee(employee: Employee): Promise<Employee> {
         const sql = `
-            INSERT INTO employee (id, isManager, shift_id) 
+            INSERT INTO employee (id, is_manager, shift_id) 
             VALUES (?, ?, ?)
         `;
         return new Promise<Employee>((resolve, reject) => {
@@ -42,6 +44,25 @@ export default class EmployeeSQLite implements EmployeeDataAccess {
                 resolve(employee);
             });
         });
+    }
+
+    private async linkEmployeeBreaks(employee: Employee): Promise<void> {
+        const sql = `
+            INSERT INTO employee_break (employee_id, break_id) 
+            VALUES (?, ?, ?)
+        `;
+        await Promise.all(
+            employee.breaks.map(subject => {
+                return new Promise((resolve, reject) => {
+                    this.db.run(sql, [employee.id, subject.id], (err) => {
+                        if (err) {
+                            reject(err);
+                        }
+                        resolve(subject);
+                    });
+                });
+            })
+        );
     }
 
     public getEmployeeById(id: string): Promise<Employee> {
@@ -71,7 +92,7 @@ export default class EmployeeSQLite implements EmployeeDataAccess {
     public updateEmployee(employee: Employee): Promise<Employee> {
         const sql = `
             UPDATE employee 
-            SET isManager = ?, shift_id = ?
+            SET is_manager = ?, shift_id = ?
             WHERE id = ?
         `;
         return new Promise((resolve, reject) => {
@@ -95,7 +116,7 @@ export default class EmployeeSQLite implements EmployeeDataAccess {
         return new Promise((resolve, reject) => {
             this.db.run(sql, [id], (err) => {
                 if (err) {
-                    throw err;
+                    reject(err);
                 }
                 resolve();
             });

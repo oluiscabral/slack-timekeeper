@@ -30,7 +30,17 @@ export default class WorkdaySQLite implements WorkdayDataAccess {
         this.employeeDataAccess = employeeDataAccess;
     }
 
-    public createWorkday(workday: Workday): Promise<Workday> {
+    public async createWorkday(workday: Workday): Promise<Workday> {
+        workday.shift = await this.shiftDataAccess.createShift(workday.shift);
+        workday.breaks = await Promise.all(workday.breaks.map(async subject => {
+            return this.breakDataAccess.createBreak(subject);
+        }));
+        const insertedWorkday = await this.insertWorkday(workday);
+        await this.linkWorkdayBreaks(insertedWorkday);
+        return insertedWorkday;
+    }
+
+    private insertWorkday(workday: Workday): Promise<Workday> {
         const sql = `
             INSERT INTO workday (date, shift_id, employee_id) 
             VALUES (?, ?, ?)
@@ -46,6 +56,25 @@ export default class WorkdaySQLite implements WorkdayDataAccess {
                 });
             });
         });
+    }
+
+    private async linkWorkdayBreaks(workday: Workday): Promise<void> {
+        const sql = `
+            INSERT INTO workday_break (workday_id, break_id) 
+            VALUES (?, ?, ?)
+        `;
+        await Promise.all(
+            workday.breaks.map(subject => {
+                return new Promise((resolve, reject) => {
+                    this.db.run(sql, [workday.id, subject.id], (err) => {
+                        if (err) {
+                            reject(err);
+                        }
+                        resolve(subject);
+                    });
+                });
+            })
+        );
     }
 
     public getWorkdayById(id: number): Promise<Workday> {
