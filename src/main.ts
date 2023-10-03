@@ -12,6 +12,7 @@ dotenv.config();
 const app = new App({
     token: process.env.BOT_TOKEN!,
     signingSecret: process.env.SIGNING_SECRET!,
+    endpoints: "/slack/commands"
 });
 
 const databasePath = pathResolve(__dirname, '..', 'database');
