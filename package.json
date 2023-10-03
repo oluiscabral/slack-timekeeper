@@ -2,9 +2,10 @@
   "name": "timetracker",
   "version": "1.0.0",
   "description": "",
-  "main": "main.js",
+  "main": "src/main.ts",
   "scripts": {
-    "test": "npx jest"
+    "test": "npx jest",
+    "start": "npx ts-node src/main.ts"
   },
   "keywords": [],
   "author": "",
