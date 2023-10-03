@@ -155,7 +155,7 @@ export default class WorkdaySQLite implements WorkdayDataAccess {
     getEmployeeWorkday(employeeId: string): Promise<Workday> {
         const sql = `SELECT * FROM workday WHERE employee_id = ? AND date = ?`;
         return new Promise((resolve, reject) => {
-            this.db.get(sql, [employeeId, getTodayDate()], async (err, row: WorkdayRow) => {
+            this.db.get(sql, [employeeId, getTodayDate().toISOString()], async (err, row: WorkdayRow) => {
                 if (err) {
                     reject(err);
                 }
