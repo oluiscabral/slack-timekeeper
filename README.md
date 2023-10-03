@@ -43,8 +43,6 @@ Configure Slack commands to interact with the bot, utilizing the following prede
 - Start Break: "brb"
 - End Break: "back"
 
-The commands are customizable in the `listenerTimekeeperConfig` object.
-
 ## Testing
 
 ```bash
