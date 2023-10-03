@@ -19,11 +19,21 @@ const shiftDataAccess = new ShiftSQLite(databasePath);
 const breakDataAccess = new BreakSQLite(databasePath);
 const employeeDataAccess = new EmployeeSQLite(databasePath, shiftDataAccess, breakDataAccess);
 const workdayDataAccess = new WorkdaySQLite(databasePath, shiftDataAccess, breakDataAccess, employeeDataAccess);
-const timekeeper = new Timekeeper(workdayDataAccess);
+const timekeeper = new Timekeeper(workdayDataAccess, employeeDataAccess, breakDataAccess);
+
+app.command('/hi', async ({command, ack}) => {
+    await ack();
+    await timekeeper.shiftStart({date: new Date(), employeeId: command.user_id});
+});
 
 app.command('/bye', async ({command, ack}) => {
     await ack();
     await timekeeper.shiftEnd({date: new Date(), employeeId: command.user_id});
+});
+
+app.command('/brb', async ({command, ack}) => {
+    await ack();
+    await timekeeper.breakStart({date: new Date(), employeeId: command.user_id});
 });
 
 app.command('/back', async ({command, ack}) => {
