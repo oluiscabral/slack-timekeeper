@@ -4,6 +4,7 @@ import BreakDataAccess from "../interactor/BreakDataAccess";
 import ShiftDataAccess from "../interactor/ShiftDataAccess";
 import Workday from "../entity/Workday";
 import WorkdayDataAccess from "../interactor/WorkdayDataAccess";
+import Break from "../entity/Break";
 
 interface WorkdayRow {
     id: number;
@@ -59,22 +60,34 @@ export default class WorkdaySQLite implements WorkdayDataAccess {
     }
 
     private async linkWorkdayBreaks(workday: Workday): Promise<void> {
+        const storedBreaks = await this.breakDataAccess.getWorkdayBreaks(workday.id ?? -1);
+        const newBreaks = workday.breaks.filter(subject => {
+            for (const storedBreak of storedBreaks) {
+                if (storedBreak.id === subject.id) {
+                    return false;
+                }
+            }
+            return true;
+        });
+        await Promise.all(newBreaks.map(async subject => {
+            await this.breakDataAccess.createBreak(subject);
+            await this.linkWorkdayBreak(workday, subject);
+        }));
+    }
+
+    private async linkWorkdayBreak(workday: Workday, subject: Break): Promise<void> {
         const sql = `
-            INSERT INTO workday_break (workday_id, break_id) 
-            VALUES (?, ?, ?)
+                INSERT INTO workday_break (workday_id, break_id) 
+                VALUES (?, ?, ?)
         `;
-        await Promise.all(
-            workday.breaks.map(subject => {
-                return new Promise((resolve, reject) => {
-                    this.db.run(sql, [workday.id, subject.id], (err) => {
-                        if (err) {
-                            reject(err);
-                        }
-                        resolve(subject);
-                    });
-                });
-            })
-        );
+        return new Promise((resolve, reject) => {
+            this.db.run(sql, [workday.id, subject.id], (err) => {
+                if (err) {
+                    reject(err);
+                }
+                resolve();
+            });
+        });
     }
 
     public getWorkdayById(id: number): Promise<Workday> {
@@ -114,6 +127,7 @@ export default class WorkdaySQLite implements WorkdayDataAccess {
                 if (err) {
                     reject(err);
                 }
+                await this.linkWorkdayBreaks(workday);
                 workday.shift = await this.shiftDataAccess.updateShift(workday.shift);
                 workday.breaks = await Promise.all(workday.breaks.map(async subject => {
                     return this.breakDataAccess.updateBreak(subject);

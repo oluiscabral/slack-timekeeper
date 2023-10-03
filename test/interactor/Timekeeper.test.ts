@@ -1,12 +1,14 @@
 import Workday from "../../src/entity/Workday";
 import Employee from "../../src/entity/Employee";
+import {getTodayDate} from "../../src/util/TimeUtil";
+import BreakSQLite from "../../src/data_access/BreakSQLite";
 import WorkdaySQLite from "../../src/data_access/WorkdaySQLite";
 import EmployeeSQLite from "../../src/data_access/EmployeeSQLite";
 import ShiftDataAccess from "../../src/interactor/ShiftDataAccess";
-import BreakDataAccess from "../../src/interactor/BreakDataAccess";
 import Timekeeper, {TimekeeperError, TimekeeperOutput, TimekeeperRequest} from "../../src/interactor/Timekeeper";
-import {getTodayDate} from "../../src/util/TimeUtil";
+import Break from "../../src/entity/Break";
 
+jest.mock("../../src/data_access/BreakSQLite");
 jest.mock("../../src/data_access/WorkdaySQLite");
 jest.mock("../../src/data_access/EmployeeSQLite");
 
@@ -34,12 +36,15 @@ describe('Timekeeper', () => {
     };
 
     let timekeeper: Timekeeper;
+    let breakDataAccess: jest.Mocked<BreakSQLite>;
     let workdayDataAccess: jest.Mocked<WorkdaySQLite>;
     let employeeDataAccess: jest.Mocked<EmployeeSQLite>;
 
     beforeEach(() => {
         const shiftDataAccess = {} as ShiftDataAccess;
-        const breakDataAccess = {} as BreakDataAccess;
+        breakDataAccess = new BreakSQLite(
+            'test-db-path'
+        ) as jest.Mocked<BreakSQLite>;
         employeeDataAccess = new EmployeeSQLite(
             'test-db-path',
             shiftDataAccess,
@@ -51,7 +56,7 @@ describe('Timekeeper', () => {
             breakDataAccess,
             employeeDataAccess,
         ) as jest.Mocked<WorkdaySQLite>;
-        timekeeper = new Timekeeper(workdayDataAccess, employeeDataAccess);
+        timekeeper = new Timekeeper(workdayDataAccess, employeeDataAccess, breakDataAccess);
     });
 
     describe('shiftStart', () => {
@@ -129,6 +134,39 @@ describe('Timekeeper', () => {
             workdayDataAccess.getEmployeeWorkday.mockResolvedValue(workday);
 
             await expect(timekeeper.shiftEnd(request)).rejects.toBeInstanceOf(TimekeeperError);
+        });
+    });
+
+    describe('breakStart', () => {
+        test('should start break successfully', async () => {
+            const request: TimekeeperRequest = {date: new Date(), employeeId: employee.id};
+            const workday: Workday = {
+                id: 1,
+                employee: employee,
+                date: getTodayDate(),
+                shift: {id: 1, start: new Date(), end: undefined},
+                breaks: [{id: 1, start: new Date(), end: new Date()}]
+            };
+            const subject: Break = {id: 1, start: new Date(), end: undefined};
+            breakDataAccess.createBreak.mockResolvedValue(subject);
+            workdayDataAccess.getEmployeeWorkday.mockResolvedValue(workday);
+
+            const result = await timekeeper.breakStart(request);
+            expect(workdayDataAccess.updateWorkday).toHaveBeenCalledWith(workday);
+            expect(result).toEqual({date: expect.any(Date), workday: workday});
+            expect(workdayDataAccess.getEmployeeWorkday).toHaveBeenCalledWith(request.employeeId);
+            expect(breakDataAccess.createBreak).toHaveBeenCalledWith({id: undefined, start: request.date, end: undefined});
+        });
+
+        test('should throw an error if the last break has not ended', async () => {
+            const workday: Workday = {
+                id: 1,
+                employee: employee,
+                date: getTodayDate(),
+                shift: {id: 1, start: new Date(), end: undefined},
+                breaks: [{id: 1, start: new Date(), end: undefined}]
+            };
+            expect(() => timekeeper.validateBreakStart(workday)).toThrow(TimekeeperError);
         });
     });
 
