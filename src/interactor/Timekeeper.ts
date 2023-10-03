@@ -67,7 +67,8 @@ export default class Timekeeper {
         try {
             return await this.workdayDataAccess.getEmployeeWorkday(request.employeeId);
         } catch (error) {
-            throw new TimekeeperError("Shift has already been started");
+            console.error(error);
+            throw new TimekeeperError("Shift has already started!");
         }
     }
 
