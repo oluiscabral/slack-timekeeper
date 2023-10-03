@@ -79,7 +79,7 @@ export default class WorkdaySQLite implements WorkdayDataAccess {
     private async linkWorkdayBreak(workday: Workday, subject: Break): Promise<void> {
         const sql = `
                 INSERT INTO workday_break (workday_id, break_id) 
-                VALUES (?, ?, ?)
+                VALUES (?, ?)
         `;
         return new Promise((resolve, reject) => {
             this.db.run(sql, [workday.id, subject.id], (err) => {
