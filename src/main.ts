@@ -6,7 +6,7 @@ import ShiftSQLite from "./data_access/ShiftSQLite";
 import EmployeeSQLite from "./data_access/EmployeeSQLite";
 import WorkdaySQLite from "./data_access/WorkdaySQLite";
 import Timekeeper from "./interactor/Timekeeper";
-import ListenerTimekeeper from "./listener/ListenerTimekeeper";
+import TimekeeperListener from "./listener/TimekeeperListener";
 
 dotenv.config();
 
@@ -28,7 +28,7 @@ const listenerTimekeeperConfig = {
     shiftStartCommand: "hi",
     breakStartCommand: "brb",
 }
-const listenerTimekeeper = new ListenerTimekeeper(app, timekeeper, listenerTimekeeperConfig);
+const listenerTimekeeper = new TimekeeperListener(app, timekeeper, listenerTimekeeperConfig);
 
 listenerTimekeeper.setup();
 

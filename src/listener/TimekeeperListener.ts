@@ -1,5 +1,5 @@
-import {App as Slack, SlackCommandMiddlewareArgs} from "@slack/bolt";
 import Timekeeper from "../interactor/Timekeeper";
+import {App as Slack, SlackCommandMiddlewareArgs} from "@slack/bolt";
 
 interface ListenerTimekeeperConfig {
     shiftEndCommand: string;
@@ -8,7 +8,7 @@ interface ListenerTimekeeperConfig {
     breakStartCommand: string;
 }
 
-export default class ListenerTimekeeper {
+export default class TimekeeperListener {
     private slack: Slack;
     public timekeeper: Timekeeper;
     private config: ListenerTimekeeperConfig;
