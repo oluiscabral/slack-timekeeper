@@ -21,7 +21,7 @@ export default class ShiftSQLite implements ShiftDataAccess {
             VALUES (?, ?)
         `;
         return new Promise((resolve, reject) => {
-            this.db.run(sql, [shift.start, shift.end], function (err) {
+            this.db.run(sql, [shift.start?.toISOString(), shift.end?.toISOString()], function (err) {
                 if (err) {
                     reject(err);
                 }
@@ -61,7 +61,7 @@ export default class ShiftSQLite implements ShiftDataAccess {
             WHERE id = ?
         `;
         return new Promise((resolve, reject) => {
-            this.db.run(sql, [shift.start, shift.end, shift.id], function (err) {
+            this.db.run(sql, [shift.start?.toISOString(), shift.end?.toISOString(), shift.id], function (err) {
                 if (err) {
                     reject(err);
                 }

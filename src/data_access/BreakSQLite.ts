@@ -21,7 +21,7 @@ export default class BreakSQLite implements BreakDataAccess {
             VALUES (?, ?)
         `;
         return new Promise((resolve, reject) => {
-            this.db.run(sql, [subject.start, subject.end], function (err) {
+            this.db.run(sql, [subject.start?.toISOString(), subject.end?.toISOString()], function (err) {
                 if (err) {
                     reject(err);
                 }
@@ -61,7 +61,7 @@ export default class BreakSQLite implements BreakDataAccess {
             WHERE id = ?
         `;
         return new Promise((resolve, reject) => {
-            this.db.run(sql, [subject.start, subject.end, subject.id], function (err) {
+            this.db.run(sql, [subject.start?.toISOString(), subject.end?.toISOString(), subject.id], function (err) {
                 if (err) {
                     reject(err);
                 }

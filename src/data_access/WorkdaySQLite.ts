@@ -48,7 +48,7 @@ export default class WorkdaySQLite implements WorkdayDataAccess {
             VALUES (?, ?, ?)
         `;
         return new Promise<Workday>((resolve, reject) => {
-            this.db.run(sql, [workday.date, workday.shift.id, workday.employee.id], function (err) {
+            this.db.run(sql, [workday.date?.toISOString(), workday.shift.id, workday.employee.id], function (err) {
                 if (err) {
                     reject(err);
                 }
@@ -124,7 +124,7 @@ export default class WorkdaySQLite implements WorkdayDataAccess {
             WHERE id = ?
         `;
         return new Promise<Workday>((resolve, reject) => {
-            this.db.run(sql, [workday.date, workday.shift.id, workday.employee.id, workday.id], async (err) => {
+            this.db.run(sql, [workday.date?.toISOString(), workday.shift.id, workday.employee.id, workday.id], async (err) => {
                 if (err) {
                     reject(err);
                 }
