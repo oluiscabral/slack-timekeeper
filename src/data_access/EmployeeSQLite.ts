@@ -122,4 +122,50 @@ export default class EmployeeSQLite implements EmployeeDataAccess {
             });
         });
     }
+
+    public getAllManagers(): Promise<Array<Employee>> {
+        const sql = `
+            SELECT * FROM employee WHERE is_manager > 0
+        `;
+        return new Promise((resolve, reject) => {
+            this.db.all(sql, async (err, rows: Array<EmployeeRow>) => {
+                if (err) {
+                    reject(err);
+                }
+                resolve(await Promise.all(rows.map(async (row) => {
+                    const shift = await this.shiftDataAccess.getShiftById(row.shift_id);
+                    const breaks = await this.breakDataAccess.getEmployeeBreaks(row.id);
+                    return {
+                        id: row.id,
+                        shift: shift,
+                        breaks: breaks,
+                        isManager: Boolean(row.is_manager)
+                    };
+                })));
+            });
+        });
+    }
+
+    public getAllEmployees(): Promise<Array<Employee>> {
+        const sql = `
+            SELECT * FROM employee
+        `;
+        return new Promise((resolve, reject) => {
+            this.db.all(sql, async (err, rows: Array<EmployeeRow>) => {
+                if (err) {
+                    reject(err);
+                }
+                resolve(await Promise.all(rows.map(async (row) => {
+                    const shift = await this.shiftDataAccess.getShiftById(row.shift_id);
+                    const breaks = await this.breakDataAccess.getEmployeeBreaks(row.id);
+                    return {
+                        id: row.id,
+                        shift: shift,
+                        breaks: breaks,
+                        isManager: Boolean(row.is_manager)
+                    };
+                })));
+            });
+        });
+    }
 }

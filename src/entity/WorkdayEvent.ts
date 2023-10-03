@@ -1,4 +1,4 @@
-export enum Event {
+export enum WorkdayEvent {
     SHIFT_END,
     BREAK_END,
     SHIFT_START,

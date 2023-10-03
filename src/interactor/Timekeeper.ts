@@ -1,11 +1,19 @@
-import Workday from "../entity/Workday";
 import Break from "../entity/Break";
+import Shift from "../entity/Shift";
+import Workday from "../entity/Workday";
+import {getMinutesDifference, getTodayDate} from "../util/TimeUtil";
+import BreakDataAccess from "./BreakDataAccess";
 import WorkdayDataAccess from "./WorkdayDataAccess";
 import EmployeeDataAccess from "./EmployeeDataAccess";
-import Shift from "../entity/Shift";
-import {getTodayDate} from "../util/TimeUtil";
-import BreakDataAccess from "./BreakDataAccess";
+import Employee from "../entity/Employee";
 
+export interface TimekeeperReminder {
+    date: Date;
+    endShift: Array<Employee>;
+    endBreak: Array<Employee>;
+    startShift: Array<Employee>;
+    startBreak: Array<Employee>;
+}
 
 export interface TimekeeperOutput {
     date: Date;
@@ -161,6 +169,108 @@ export default class Timekeeper {
         if (subject === undefined || subject.end !== undefined) {
             throw new TimekeeperError("There is no open and started break!");
         }
+    }
+
+    public async getReminders(): Promise<TimekeeperReminder> {
+        const endShift: Array<Employee> = [];
+        const endBreak: Array<Employee> = [];
+        const startShift: Array<Employee> = [];
+        const startBreak: Array<Employee> = [];
+        const employees: Array<Employee> = await this.employeeDataAccess.getAllEmployees();
+        await Promise.all(employees.map(async (employee) => {
+            try {
+                const workday = await this.workdayDataAccess.getEmployeeWorkday(employee.id);
+                if (this.shouldEndShift(workday)) {
+                    endShift.push(employee);
+                } else if (this.shouldEndBreak(workday)) {
+                    endBreak.push(employee);
+                } else if (this.shouldStartBreak(workday)) {
+                    startBreak.push(employee);
+                }
+            } catch (error) {
+                if (this.shouldStartShift(employee)) {
+                    startShift.push(employee);
+                }
+            }
+        }));
+        return {
+            endShift,
+            endBreak,
+            startShift,
+            startBreak,
+            date: new Date()
+        }
+    }
+
+    private shouldEndShift(workday: Workday) {
+        const employee = workday.employee;
+        if (workday.shift.end !== undefined) {
+            return false;
+        }
+        if (employee.shift.end === undefined) {
+            return false;
+        }
+        return getMinutesDifference(new Date(), employee.shift.end) < 0;
+    }
+
+    private shouldStartBreak(workday: Workday) {
+        const now = new Date();
+        const employee = workday.employee;
+        for (const planned of employee.breaks) {
+            if (planned.start === undefined || planned.end === undefined) {
+                continue;
+            }
+            const startDiff = getMinutesDifference(now, planned.start);
+            if (startDiff <= 0 && startDiff > -4) {
+                return this.breakHasNotStarted(planned, workday)
+            }
+        }
+        return false;
+    }
+
+    private breakHasNotStarted(planned: Break, workday: Workday) {
+        for (const happened of workday.breaks) {
+            if (happened.start === undefined) {
+                continue;
+            }
+            const startDiff = getMinutesDifference(happened.start, planned.start ?? new Date());
+            if (startDiff >= 0 && happened.end === undefined) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private shouldEndBreak(workday: Workday) {
+        const now = new Date();
+        const employee = workday.employee;
+        for (const planned of employee.breaks) {
+            if (planned.start === undefined || planned.end === undefined) {
+                continue;
+            }
+            const endDiff = getMinutesDifference(now, planned.end);
+            if (endDiff <= 0 && endDiff > -4) {
+                return this.breakHasNotEnded(planned, workday)
+            }
+        }
+        return false;
+    }
+
+    private breakHasNotEnded(planned: Break, workday: Workday) {
+        for (const happened of workday.breaks) {
+            const endDiff = getMinutesDifference(happened.end ?? new Date(), planned.end ?? new Date());
+            if (endDiff <= 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private shouldStartShift(employee: Employee) {
+        if (employee.shift.start === undefined) {
+            return false;
+        }
+        return getMinutesDifference(new Date(), employee.shift.start) <= 0;
     }
 
 }
