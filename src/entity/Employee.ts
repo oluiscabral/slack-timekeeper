@@ -1,6 +1,9 @@
+import Shift from "./Shift";
+import Break from "./Break";
+
 export default interface Employee {
     id: string;
+    shift: Shift;
     isManager: boolean;
-    shift: DefinedTimespan;
-    breaks: Array<DefinedTimespan>;
+    breaks: Array<Break>;
 }
