@@ -64,10 +64,13 @@ export default class Timekeeper {
     }
 
     public async validateShiftStart(request: TimekeeperRequest) {
+        let workday = null;
         try {
-            return await this.workdayDataAccess.getEmployeeWorkday(request.employeeId);
+            workday = await this.workdayDataAccess.getEmployeeWorkday(request.employeeId);
         } catch (error) {
-            console.error(error);
+            // pass
+        }
+        if (workday !== null) {
             throw new TimekeeperError("Shift has already started!");
         }
     }
